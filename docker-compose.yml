@@ -1,0 +1,139 @@
+# Local development stack: Postgres 16 + Redis + MinIO (S3-compatible), plus the app processes under the `app` profile.
+#
+#   cp .env.example .env            # then fill in secrets (python backend/scripts/generate_secrets.py)
+#   docker compose up -d            # infrastructure only (database is created and provisioned by `db-init`)
+#   docker compose --profile app up -d --build    # also runs the API and the three workers
+#
+# The frontend is run with `npm run dev` in ./frontend (see README.md).
+# Everything here is for LOCAL development. Do not expose these ports to the internet.
+
+name: sadqah
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres-dev-only}
+      POSTGRES_DB: sadqah
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sadqah"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: creates the least-privilege roles, loads schema.sql and applies database/patches/*.sql.
+  # Safe to re-run: it does nothing once the `core` schema exists.
+  db-init:
+    image: postgres:16
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres-dev-only}
+      DB_API_PASSWORD: ${DB_API_PASSWORD:?set DB_API_PASSWORD in .env}
+      DB_WORKER_PASSWORD: ${DB_WORKER_PASSWORD:?set DB_WORKER_PASSWORD in .env}
+      DB_WEBHOOK_PASSWORD: ${DB_WEBHOOK_PASSWORD:?set DB_WEBHOOK_PASSWORD in .env}
+      DB_KYC_PASSWORD: ${DB_KYC_PASSWORD:?set DB_KYC_PASSWORD in .env}
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:?set DB_ADMIN_PASSWORD in .env}
+    volumes:
+      - ./database:/database:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        if [ "$$(psql -d sadqah -Atc "select to_regnamespace('core') is not null")" = "t" ]; then
+          echo "database already provisioned"; exit 0
+        fi
+        psql -q -v ON_ERROR_STOP=1 -d sadqah \
+          -v api_password="$$DB_API_PASSWORD" -v worker_password="$$DB_WORKER_PASSWORD" \
+          -v webhook_password="$$DB_WEBHOOK_PASSWORD" -v kyc_password="$$DB_KYC_PASSWORD" \
+          -v admin_password="$$DB_ADMIN_PASSWORD" -f /database/roles.sql
+        psql -q -v ON_ERROR_STOP=1 -d sadqah -f /database/schema.sql
+        for patch in /database/patches/*.sql; do
+          [ -e "$$patch" ] || continue
+          psql -q -v ON_ERROR_STOP=1 -d sadqah -f "$$patch"
+        done
+        echo "database provisioned"
+    restart: "no"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-sadqah-dev}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-sadqah-dev-only-secret}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+    profiles: ["s3"]   # only needed when STORAGE_BACKEND=s3; the default `local` backend writes to ./var
+
+  # ---- application processes (build from backend/Dockerfile) --------------------------------------------
+  api: &app
+    profiles: ["app"]
+    build: ./backend
+    env_file: .env
+    environment: &appenv
+      DATABASE_URL_API: postgresql://sadqah_api:${DB_API_PASSWORD}@db:5432/sadqah
+      DATABASE_URL_WORKER: postgresql://sadqah_worker:${DB_WORKER_PASSWORD}@db:5432/sadqah
+      DATABASE_URL_WEBHOOK: postgresql://sadqah_webhook:${DB_WEBHOOK_PASSWORD}@db:5432/sadqah
+      DATABASE_URL_KYC: postgresql://sadqah_kyc:${DB_KYC_PASSWORD}@db:5432/sadqah
+      DATABASE_URL_ADMIN: postgresql://sadqah_admin:${DB_ADMIN_PASSWORD}@db:5432/sadqah
+      REDIS_URL: redis://redis:6379/0
+      VAULT_DIR: /var/sadqah/vault
+      PUBLIC_MEDIA_DIR: /var/sadqah/public_media
+      # Assistant engine (see .env.example). Defaults keep the original behaviour; set ASSISTANT_PROVIDER=ollama in .env for the local model.
+      ASSISTANT_PROVIDER: ${ASSISTANT_PROVIDER:-anthropic}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - appdata:/var/sadqah
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # lets the container reach Ollama on the host (automatic on Docker Desktop, needed on Linux)
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  payout-worker:
+    <<: *app
+    ports: []
+    command: ["python", "-m", "app.workers.payout_worker"]
+
+  reconciler:
+    <<: *app
+    ports: []
+    command: ["python", "-m", "app.workers.reconciler"]
+
+  kyc-worker:
+    <<: *app
+    ports: []
+    command: ["python", "-m", "app.workers.kyc_worker"]
+
+volumes:
+  dbdata:
+  miniodata:
+  appdata:

@@ -1,0 +1,77 @@
+# Secrets and local configuration (keep only the safe template)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Private keys, certificates and local secret stores
+*.pem
+*.key
+*.p12
+*.pfx
+*.secret
+secrets/
+
+# Runtime data, uploads and local storage
+var/
+backend/var/
+uploads/
+backend/uploads/
+appdata/
+dbdata/
+miniodata/
+postgres-data/
+minio-data/
+
+# Python bytecode, environments, test and lint caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.nox/
+*.egg-info/
+.coverage
+.coverage.*
+htmlcov/
+
+# Node.js and Next.js build output
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+
+# Build artifacts and local database files
+build/
+dist/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+
+# Logs and operating-system/editor files
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# Internal development and review files
+_sandbox_tooling/
+_update_review/
+CHANGESET_*.md
+INSTALL_UPDATE.md
+PASTE_GUIDE.txt
+PROGRESS.md
+UPDATE_MANIFEST.md
+WINDOWS_SETUP.md

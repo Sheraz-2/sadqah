@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+/* SadQah design tokens. Lapis (trust), turquoise (tilework), saffron (warmth), pomegranate (the one call to act). */
+@theme {
+  --color-salt: #f4f7f6;
+  --color-paper: #ffffff;
+  --color-ink: #0d1b2e;
+  --color-ink-soft: #4a586b;
+  --color-line: #d9e1e4;
+  --color-lapis-50: #eef3fb;
+  --color-lapis-100: #d9e5f6;
+  --color-lapis-500: #2a62ad;
+  --color-lapis-700: #1b4580;
+  --color-lapis-900: #0f2a52;
+  --color-tile-50: #e6f6f3;
+  --color-tile-500: #17a08f;
+  --color-tile-700: #0f7568;
+  --color-saffron-100: #fdf0cf;
+  --color-saffron-400: #f2b53b;
+  --color-saffron-600: #c98a0c;
+  --color-pomegranate-500: #b8334a;
+  --color-pomegranate-600: #9b2840;
+  --color-pomegranate-50: #fbebee;
+  --color-ok: #0f7568;
+  --color-warn: #a86a00;
+  --color-bad: #b42318;
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: var(--font-amiri), "Noto Naskh Arabic", serif;
+
+  --radius-tile: 0.375rem;
+  --shadow-lift: 0 1px 0 rgb(13 27 46 / 0.04), 0 8px 24px -12px rgb(15 42 82 / 0.28);
+}
+
+html { color-scheme: light; scroll-behavior: smooth; }
+body {
+  background: var(--color-salt);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.015em; line-height: 1.08; text-wrap: balance; }
+p { text-wrap: pretty; }
+:focus-visible { outline: 3px solid var(--color-saffron-400); outline-offset: 2px; border-radius: 4px; }
+::selection { background: var(--color-saffron-100); }
+
+/* Eight-point star tessellation (Islamic geometric tradition), used as quiet texture. */
+.pattern-stars {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.13' stroke-width='1.2'%3E%3Cpath d='M36 6l7.4 14.6L58 16l-4.6 14.6L66 36l-12.6 5.4L58 56l-14.6-4.6L36 66l-7.4-14.6L14 56l4.6-14.6L6 36l12.6-5.4L14 16l14.6 4.6z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 72px 72px;
+}
+.pattern-stars-dark {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%231b4580' stroke-opacity='0.09' stroke-width='1.2'%3E%3Cpath d='M36 6l7.4 14.6L58 16l-4.6 14.6L66 36l-12.6 5.4L58 56l-14.6-4.6L36 66l-7.4-14.6L14 56l4.6-14.6L6 36l12.6-5.4L14 16l14.6 4.6z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 72px 72px;
+}
+
+/* One orchestrated moment: the calligraphy settles in once on load. */
+@keyframes settle { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+.animate-settle { animation: settle 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* Range input styled as a lapis track with a saffron thumb. */
+input[type="range"].sq-range { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 999px; background: var(--color-lapis-100); }
+input[type="range"].sq-range::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--color-saffron-400); border: 4px solid var(--color-lapis-900); cursor: grab; }
+input[type="range"].sq-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--color-saffron-400); border: 4px solid var(--color-lapis-900); cursor: grab; }
+
+
+/* =====================================================================================================
+   SadQah interaction layer, v3 "light" (replaces v2). Smaller, cheaper, same feel:
+   cursor-aware buttons and campaign cards, spring easing, focus bloom, scroll progress, soft entrances.
+   ===================================================================================================== */
+
+/* ---- 0. Motion tokens ---------------------------------------------------------------------------- */
+:root {
+  --sq-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --sq-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* >>> CURSOR LIGHT: change these two lines to resize / re-tint the soft light that follows the mouse <<< */
+  --sq-glow-size: 240px;
+  --sq-glow-color: rgb(242 181 59 / 0.14);
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root { --sq-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.4%, 1.077 22.4%, 1.121 25.8%, 1.136 29.9%, 1.124 33.2%, 1.083 38.4%, 1.011 46.3%, 0.99 51.5%, 0.995 62%, 1); }
+}
+
+/* ---- 1. Base feel ---------------------------------------------------------------------------------- */
+html { scroll-padding-top: 5rem; scrollbar-width: thin; scrollbar-color: var(--color-lapis-100) transparent; }
+.ag-cell, time { font-variant-numeric: tabular-nums; }
+::selection { background: var(--color-saffron-100); color: var(--color-ink); }
+a, button, summary, label[for], select { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button:not(:disabled), summary, label[for], select, [role="button"], input[type="checkbox"], input[type="radio"], input[type="range"], input[type="file"]::file-selector-button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--color-lapis-500); }
+input::placeholder, textarea::placeholder { transition: opacity 200ms ease; }
+input:focus::placeholder, textarea:focus::placeholder { opacity: 0.4; }
+dialog, .ag-body-viewport { overscroll-behavior: contain; }
+
+/* ---- 2. Shared transitions (interactive elements only) ------------------------------------------- */
+a, summary, input, textarea, select {
+  transition-property: color, background-color, border-color, text-decoration-color, box-shadow, opacity, transform, background-size, background-position, outline-offset;
+  transition-duration: 200ms;
+  transition-timing-function: var(--sq-ease);
+}
+button {
+  transition: color 180ms var(--sq-ease), background-color 180ms var(--sq-ease), border-color 180ms var(--sq-ease), opacity 180ms var(--sq-ease),
+    transform 380ms var(--sq-spring), box-shadow 300ms var(--sq-ease), background-position 700ms var(--sq-ease), outline-offset 160ms var(--sq-ease);
+}
+
+/* ---- 3. Buttons: cursor spotlight, moving shadow, magnetic pull, sheen, spring press -------------- */
+[class~="bg-pomegranate-500"] { --sq-glow-c: rgb(184 51 74 / 0.6); }
+[class~="bg-lapis-900"] { --sq-glow-c: rgb(15 42 82 / 0.5); }
+[class~="bg-bad"] { --sq-glow-c: rgb(180 35 24 / 0.5); }
+[class~="bg-white"], [class~="text-lapis-700"] { --sq-spot: rgb(42 98 173 / 0.12); --sq-glow-c: rgb(27 69 128 / 0.25); }
+
+:is(button, a)[class~="bg-pomegranate-500"], :is(button, a)[class~="bg-lapis-900"], :is(button, a)[class~="bg-bad"] {
+  background-image: linear-gradient(transparent, transparent), linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.3) 50%, transparent 62%);
+  background-size: auto, 260% 100%;
+  background-position: 0 0, 170% 0;
+  background-repeat: no-repeat;
+}
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  a[class~="rounded-full"][class~="inline-flex"]:hover {
+    transform: translate(calc(var(--nx, 0) * 3px), calc(var(--ny, 0) * 2px - 1px));
+    background-image: radial-gradient(110px circle at var(--mx, 50%) var(--my, 50%), var(--sq-spot, rgb(255 255 255 / 0.22)), transparent 70%);
+    box-shadow: var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000), var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000),
+      calc(var(--nx, 0) * 12px) calc(12px + var(--ny, 0) * 5px) 24px -12px var(--sq-glow-c, rgb(15 42 82 / 0.4));
+  }
+  :is(button, a)[class~="bg-pomegranate-500"]:not(:disabled):hover, :is(button, a)[class~="bg-lapis-900"]:not(:disabled):hover, :is(button, a)[class~="bg-bad"]:not(:disabled):hover {
+    background-image: radial-gradient(110px circle at var(--mx, 50%) var(--my, 50%), var(--sq-spot, rgb(255 255 255 / 0.22)), transparent 70%), linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.3) 50%, transparent 62%);
+    background-position: 0 0, -70% 0;
+  }
+}
+button:not(:disabled):active, a[class~="rounded-full"][class~="inline-flex"]:active, summary:active { transform: scale(0.96); }
+
+/* ---- 4. Campaign cards: tilt, photo parallax, moving light (light is a small GPU-moved layer) ------ */
+article { position: relative; transition: transform 140ms ease-out, box-shadow 250ms var(--sq-ease); }
+article > a { overflow: hidden; }
+article img { transition: transform 500ms var(--sq-ease); }
+article::after {
+  content: ""; position: absolute; left: 0; top: 0; width: 360px; height: 360px; margin: -180px 0 0 -180px; pointer-events: none; opacity: 0;
+  background: radial-gradient(closest-side, rgb(23 160 143 / 0.12), transparent 70%);
+  transform: translate(var(--mx, 0px), var(--my, 0px)); transition: opacity 250ms var(--sq-ease);
+}
+a[aria-label="SadQah home"] svg { transition: transform 500ms var(--sq-spring); }
+@media (hover: hover) and (pointer: fine) {
+  article:hover {
+    transform: perspective(1100px) rotateX(calc(var(--ny, 0) * -3deg)) rotateY(calc(var(--nx, 0) * 4deg)) translateY(-4px);
+    --tw-ring-color: color-mix(in srgb, var(--color-lapis-500) 55%, var(--color-line));
+  }
+  article:hover::after { opacity: 1; }
+  article:hover img { transform: scale(1.06) translate(calc(var(--nx, 0) * -6px), calc(var(--ny, 0) * -4px)); }
+  a[aria-label="SadQah home"]:hover svg { transform: rotate(45deg) scale(1.1); }
+}
+
+/* ---- 5. Links ------------------------------------------------------------------------------------- */
+main a:not([class]) { text-decoration-line: underline; text-decoration-color: transparent; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+footer a { text-decoration-line: underline; text-decoration-color: transparent; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+header nav[aria-label="Main"] a {
+  background-image: linear-gradient(var(--color-saffron-400), var(--color-saffron-400));
+  background-repeat: no-repeat; background-position: 50% calc(100% - 6px); background-size: 0% 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  main a:not([class]):hover { text-decoration-color: currentColor; }
+  footer a:hover { text-decoration-color: var(--color-saffron-400); transform: translateX(4px); }
+  header nav[aria-label="Main"] a:hover { background-size: calc(100% - 1.75rem) 2px; }
+}
+
+/* ---- 6. Header / tabs ------------------------------------------------------------------------------- */
+header details[open] > summary { background-color: var(--color-lapis-50); }
+header details[open] > nav { transform-origin: top right; animation: sq-pop 340ms var(--sq-spring) both; }
+a[aria-current="page"][class~="rounded-full"] {
+  box-shadow: var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000), var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000), 0 8px 18px -8px rgb(15 42 82 / 0.55);
+}
+
+/* ---- 7. Forms ----------------------------------------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), textarea, select):hover:not(:focus):not([aria-invalid="true"]) {
+    --tw-ring-color: color-mix(in srgb, var(--color-lapis-500) 38%, var(--color-line));
+  }
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), textarea, select):focus {
+  box-shadow: var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000), var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000),
+    0 0 0 4px rgb(42 98 173 / 0.14), 0 12px 24px -14px rgb(42 98 173 / 0.6);
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus {
+  box-shadow: var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000), var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000), 0 0 0 4px rgb(180 35 24 / 0.14);
+}
+input[type="file"]::file-selector-button { margin-right: 0.75rem; padding: 0.5rem 1rem; border: 0; border-radius: 999px; background: var(--color-lapis-50); color: var(--color-lapis-900); font-weight: 600; transition: background-color 180ms var(--sq-ease); }
+input[type="file"]::file-selector-button:hover { background: var(--color-lapis-100); }
+input[type="range"].sq-range::-webkit-slider-thumb { transition: transform 300ms var(--sq-spring), box-shadow 200ms var(--sq-ease); box-shadow: 0 6px 14px -6px rgb(15 42 82 / 0.6); }
+input[type="range"].sq-range::-moz-range-thumb { transition: transform 300ms var(--sq-spring); }
+input[type="range"].sq-range:hover::-webkit-slider-thumb { transform: scale(1.12); }
+input[type="range"].sq-range:active::-webkit-slider-thumb { transform: scale(1.22); cursor: grabbing; box-shadow: 0 0 0 8px rgb(242 181 59 / 0.28), 0 8px 16px -6px rgb(15 42 82 / 0.6); }
+input[type="range"].sq-range:hover::-moz-range-thumb { transform: scale(1.12); }
+input[type="range"].sq-range:active::-moz-range-thumb { transform: scale(1.22); }
+
+/* ---- 8. Entrances ------------------------------------------------------------------------------------ */
+@keyframes sq-pop { from { opacity: 0; transform: translateY(-8px) scale(0.94); } to { opacity: 1; transform: none; } }
+@keyframes sq-dialog-in { from { opacity: 0; transform: translateY(18px) scale(0.95); } to { opacity: 1; transform: none; } }
+@keyframes sq-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sq-rise { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes sq-bar-reveal { from { clip-path: inset(0 100% 0 0 round 999px); } to { clip-path: inset(0 0 0 0 round 999px); } }
+@keyframes sq-shine { to { transform: translateX(100%); } }
+
+dialog[open] { animation: sq-dialog-in 420ms var(--sq-spring) both; }
+dialog[open]::backdrop { animation: sq-fade-in 240ms ease-out both; background: radial-gradient(circle at 50% 38%, rgb(27 69 128 / 0.55), rgb(15 42 82 / 0.82)); }
+[role="alertdialog"]:not(dialog) { animation: sq-fade-in 220ms ease-out both; }
+[role="alert"] { animation: sq-rise 260ms var(--sq-ease) both; }
+
+[role="progressbar"] > div { position: relative; overflow: hidden; animation: sq-bar-reveal 900ms var(--sq-ease) backwards; }
+[role="progressbar"] > div::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.5) 50%, transparent 70%);
+  transform: translateX(-100%); animation: sq-shine 1200ms ease-out 900ms 1 both;
+}
+
+/* ---- 9. Data grids ------------------------------------------------------------------------------------ */
+.ag-root-wrapper { --ag-header-cell-hover-background-color: var(--color-lapis-100); }
+.ag-root-wrapper .ag-row-hover:not(.ag-row-selected) { box-shadow: inset 3px 0 0 var(--color-saffron-400); }
+
+/* ---- 10. Cursor light (mouse devices only; one small element moved by PointerFX) ------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  .sq-cursor-glow {
+    position: fixed; left: 0; top: 0; width: var(--sq-glow-size); height: var(--sq-glow-size);
+    margin: calc(var(--sq-glow-size) / -2) 0 0 calc(var(--sq-glow-size) / -2);
+    border-radius: 50%; pointer-events: none; z-index: -1; opacity: 0;
+    background: radial-gradient(closest-side, var(--sq-glow-color), transparent 70%);
+    transition: opacity 400ms ease; will-change: transform;
+  }
+  .sq-cursor-glow[data-on] { opacity: 1; }
+}
+
+/* ---- 11. Phones: skip live blur (the costliest effect) ------------------------------------------------ */
+@media (max-width: 640px) {
+  header.sticky { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: var(--color-salt); }
+  dialog::backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(15 42 82 / 0.74); }
+}
+
+/* ---- 12. Scroll-driven extras (Chrome/Edge/Android Chrome/Safari 26+; ignored elsewhere) --------------- */
+@supports (animation-timeline: scroll()) {
+  @keyframes sq-scroll-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  body::before {
+    content: ""; position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 60; pointer-events: none;
+    transform-origin: 0 50%; transform: scaleX(0);
+    background: linear-gradient(90deg, var(--color-tile-500), var(--color-saffron-400), var(--color-pomegranate-500));
+    animation: sq-scroll-progress linear both; animation-timeline: scroll(root block);
+  }
+  @keyframes sq-header-edge { from { opacity: 0; } to { opacity: 1; } }
+  header.sticky::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px; pointer-events: none; opacity: 0;
+    background: linear-gradient(rgb(15 42 82 / 0.11), transparent);
+    animation: sq-header-edge linear both; animation-timeline: scroll(root block); animation-range: 0 80px;
+  }
+  @keyframes sq-reveal { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+  article { animation: sq-reveal linear backwards; animation-timeline: view(); animation-range: entry 0% entry 38%; }
+}
+
+/* ---- 13. Reduce motion: everything above switches off ---------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  body::before, header.sticky::after, article, dialog[open], dialog[open]::backdrop, [role="alert"], [role="alertdialog"],
+  [role="progressbar"] > div, [role="progressbar"] > div::after, header details[open] > nav { animation: none !important; }
+  button:hover, a:hover, article:hover, article:hover img, a:active, button:active, summary:active, footer a:hover { transform: none !important; }
+  .sq-cursor-glow { display: none; }
+}
