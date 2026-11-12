@@ -48,7 +48,7 @@ For the optional demo-data step, also install the PostgreSQL 16 **Command Line T
 Replace the placeholder URL with the public GitHub repository URL shown on the Devpost submission.
 
 ```powershell
-git clone <PUBLIC-REPOSITORY-URL>
+git clone https://github.com/Sheraz-2/sadqah.git
 cd sadqah
 ```
 
